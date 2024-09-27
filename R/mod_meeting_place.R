@@ -277,7 +277,6 @@ mod_meeting_place_server <- function(id,
     })
 
     output$map <- leaflet::renderLeaflet({
-      
       req(map_dest())
 
       pal <- colorFactor(
@@ -297,15 +296,14 @@ mod_meeting_place_server <- function(id,
       )
 
       short_nodes <- unique(unname(unlist(purrr::map(short_paths, ~ .x |>
-        pull(node_paths) |>
-        unlist()))))
+                                                       pull(node_paths) |>
+                                                       unlist()))))
 
       stop_nodes <- setdiff(short_nodes, c(map_ori$origin_id, map_dest))
 
       short_edges <- unname(unlist(purrr::map(short_paths, ~ .x |>
-        pull(edge_paths) |>
-        unlist())))
-
+                                                pull(edge_paths) |>
+                                                unlist())))
 
       nodes <- net |>
         activate("nodes") |>
@@ -334,10 +332,10 @@ mod_meeting_place_server <- function(id,
           values = unique(nodes$type)
         ) |>
         leaflet::addCircleMarkers(
-          data = mutate(nodes, 
-            city_lon = st_coordinates(.)[,1],
-            city_lat = st_coordinates(.)[,2]
-        ),
+          data = mutate(nodes,
+                        city_lon = unlist(map(nodes$geometry,1)),
+                        city_lat = unlist(map(nodes$geometry,2))
+          ),
           lng = ~city_lon,
           lat = ~city_lat,
           radius = 10,
@@ -377,7 +375,7 @@ best_locations <- function(
   distance_mat_sub <- distance_mat[df_origin$origin_id, destinations]
 
   # 3. Multiply rows by value of input
-  distance_mat_sub <- sweep(distance_mat_sub, 1, df_origin$n_participant, FUN = "*")
+  distance_mat_sub <- sweep(as.matrix(distance_mat_sub), 1, df_origin$n_participant, FUN = "*")
 
   # 4. Sum all rows together and sort
   distance_mat_sum <- sort(colSums(distance_mat_sub))
@@ -390,14 +388,14 @@ best_locations <- function(
   emissions_mat_sub <- emissions_mat[df_origin$origin_id, destinations]
 
   # 3. Multiply rows by value of input
-  emissions_mat_sub <- sweep(emissions_mat_sub, 1, df_origin$n_participant, FUN = "*")
+  emissions_mat_sub <- sweep(as.matrix(emissions_mat_sub), 1, df_origin$n_participant, FUN = "*")
 
   # 4. Sum all rows together and sort
   emissions_mat_sum <- sort(colSums(emissions_mat_sub))
 
   # 5. create dataframe and calculate emissions
   df <- data.frame(
-    name_dest = names(distance_mat_sum),
+    name_dest = destinations,
     grand_tot_km = unname(distance_mat_sum),
     grand_tot_emission = unname(emissions_mat_sum)
   )
