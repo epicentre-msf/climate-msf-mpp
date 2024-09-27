@@ -1,6 +1,6 @@
 # MSF Carbon Travel App
 
-Welcome to the Carbon Travel App ! 
+Welcome to the Meeting Place Planner ! 
 
 This is a multi-function app designed to raise awareness and help minimise the *Carbon emissions* caused by travel across the MSF movement.
 
@@ -20,9 +20,17 @@ For any general enquiries regarding the project or **Climate Smart MSF** please 
 
 ### Meeting place planner methodology
 
-In order to accurately calculate the best meeting locations based on participants origins, we have used the 200 000+ flights in the MSF travel data to create a network of cities linked together by the available flights. This network is then used to calculate a distance matrix, where the distance between two cities corresponds to the shortest *great-circle distance* (using the Haversine formula, taking into account the curve of the Earth) across the network (taking into account stop overs if no direct flights are available). 
+In order to accurately calculate the best meeting locations based on participants origins, we have used the 200 000+ flights in the MSF travel data to create a network of cities linked together by the available flights. 
 
-This distance matrix is then queried to output the total travel distance from the defined origins and one possible destination. This is repeated for all possible destinations selected by the user. Distances are converted into emissions using the emission factors and destinations are ranked from the lowest emissions to the highest before the top 50 destinations are displayed. 
+This network is then used to calculate a distance matrix, where the distance between two cities corresponds to the shortest *great-circle distance* (using the Haversine formula, taking into account the curve of the Earth) across the network (thus taking into account stop overs if no direct flights are available). This distance matrix is then queried to output the total travel distance from the defined origins and one possible destination. This is repeated for all possible destinations selected by the user. 
+
+For emissions, we have used the city network to calculate an emission matrix. Using the shortest *great-circle distance* as per the distance matrix calculation, we retrieve each flight segment that links two cities. Each segment of travel is then converted to the corresponding emissions using the emission factors for short, medium and long hauls. The emissions are then summed over all segments to yield the total travel emissions between two cities. Similarly to the distance matrix, the emission matrix is then queried depending on user inputs to output the total emissions for a planned meeting. 
+
+Distances and emissions for each possible destination are then ranked and displayed in the app. 
+
+### Single Travel Estimation methodology
+
+The single Travel Estimator is meant to be used by user who already know the trip they will do, or have a particular trip in mind. We have created a network linking all the cities in the MSF flights database and the app uses the user inputs to construct a path through the network. Each segment of the path is then analysed for distance and emissions before being displayed.
 
 ### Emissions factors
 
