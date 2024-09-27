@@ -24,7 +24,8 @@ is_sp_env <- sp_path != ""
 # Import data -------------------------------------------------------------
 
 # Get the distance matrix
-mat <- read_rds(here::here(clean_path, "distance_matrix.rds"))
+distance_mat <- read_rds(here::here(clean_path, "distance_matrix.rds"))
+emissions_mat <- read_rds(here::here(clean_path, "emissions_matrix.rds"))
 
 #all possible destinations
 dest <- read_rds(here::here(clean_path, "dest_cities.rds"))

@@ -26,9 +26,9 @@ server <- function(input, output, session) {
   
   mod_meeting_place_server(
     id = "mp",
-    mat, 
+    distance_mat, 
+    emissions_mat, 
     air_msf,
-    df_conversion, 
     net, 
     is_mobile = reactive(input$is_mobile)
   )

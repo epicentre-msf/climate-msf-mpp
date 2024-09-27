@@ -94,7 +94,8 @@ mod_meeting_place_ui <- function(id) {
 }
 
 mod_meeting_place_server <- function(id,
-                                     mat,
+                                     distance_mat,
+                                     emissions_mat,
                                      air_msf,
                                      df_conversion,
                                      network,
@@ -151,8 +152,9 @@ mod_meeting_place_server <- function(id,
       dest_cities <- dest_cities |> pull(city_code)
 
       # Get best locations from the matrix
-
-      all_dest <- best_locations(mat,
+      all_dest <- best_locations(
+        distance_mat,
+        emissions_mat,
         df_origin(),
         destinations = dest_cities
       ) |>
@@ -184,7 +186,6 @@ mod_meeting_place_server <- function(id,
           msf_type
         )
     }) |> bindEvent(input$go)
-
 
     # Make a reactable
     orange_pal <- function(x) rgb(colorRamp(c("#B8CCAD", "#BF6C67"))(x), maxColorValue = 255)
@@ -240,7 +241,7 @@ mod_meeting_place_server <- function(id,
       )
     })
 
-    # Map  =========================================================================
+    #* Map  =========================================================================
 
     map_dest <- reactiveVal()
     # when new locations are calculated update map dest to rank 1 city
@@ -276,13 +277,13 @@ mod_meeting_place_server <- function(id,
     })
 
     output$map <- leaflet::renderLeaflet({
+      
       req(map_dest())
 
       pal <- colorFactor(
         palette = c("darkred", "steelblue", "orange"),
         domain = c("destination", "origin", "shortest stop-over")
       )
-
       # origins
       map_ori <- df_origin() |> left_join(dest, by = join_by(origin_id == city_code))
 
@@ -304,6 +305,7 @@ mod_meeting_place_server <- function(id,
       short_edges <- unname(unlist(purrr::map(short_paths, ~ .x |>
         pull(edge_paths) |>
         unlist())))
+
 
       nodes <- net |>
         activate("nodes") |>
@@ -332,9 +334,12 @@ mod_meeting_place_server <- function(id,
           values = unique(nodes$type)
         ) |>
         leaflet::addCircleMarkers(
-          data = nodes,
-          lng = ~lon,
-          lat = ~lat,
+          data = mutate(nodes, 
+            city_lon = st_coordinates(.)[,1],
+            city_lat = st_coordinates(.)[,2]
+        ),
+          lng = ~city_lon,
+          lat = ~city_lat,
           radius = 10,
           color = ~"white",
           fillOpacity = 1,
@@ -346,14 +351,16 @@ mod_meeting_place_server <- function(id,
   })
 }
 
-best_locations <- function(mat,
-                           df_origin,
-                           destinations) {
-  if (length(setdiff(df_origin$origin_id, colnames(mat))) > 0) {
-    stop(paste0("Origins: ", paste(setdiff(df_origin$origin_id, colnames(mat)), collapse = ", "), " are not in the matrix"))
+best_locations <- function(
+    distance_mat,
+    emissions_mat,
+    df_origin,
+    destinations) {
+  if (length(setdiff(df_origin$origin_id, colnames(distance_mat))) > 0) {
+    stop(paste0("Origins: ", paste(setdiff(df_origin$origin_id, colnames(distance_mat)), collapse = ", "), " are not in the matrix"))
   }
-  if (length(setdiff(destinations, colnames(mat))) > 0) {
-    stop(paste0("Destinations: ", paste(setdiff(destinations, colnames(mat)), collapse = ", "), " are not in the matrix"))
+  if (length(setdiff(destinations, colnames(distance_mat))) > 0) {
+    stop(paste0("Destinations: ", paste(setdiff(destinations, colnames(distance_mat)), collapse = ", "), " are not in the matrix"))
   }
 
   # sort the df_origins by alphabetical order
@@ -362,39 +369,38 @@ best_locations <- function(mat,
   # sort the destination by alphabetical order
   destinations <- sort(destinations)
 
-  # sort the matrix is sorted in alphabetical order
-  mat_sub <- mat[sort(rownames(mat)), sort(colnames(mat))]
+  # Distances -----------------------------------------------
+  # sort the distance matrix in alphabetical order
+  distance_mat <- distance_mat[sort(rownames(distance_mat)), sort(colnames(distance_mat))]
 
   # 1. filter the possible destinations & Filter rows of origins
-  mat_sub <- mat[df_origin$origin_id, destinations]
+  distance_mat_sub <- distance_mat[df_origin$origin_id, destinations]
 
   # 3. Multiply rows by value of input
-  mat_sub_ori <- sweep(mat_sub, 1, df_origin$n_participant, FUN = "*")
+  distance_mat_sub <- sweep(distance_mat_sub, 1, df_origin$n_participant, FUN = "*")
 
   # 4. Sum all rows together and sort
-  mat_sum <- sort(colSums(mat_sub_ori))
+  distance_mat_sum <- sort(colSums(distance_mat_sub))
+
+  # Emissions -----------------------------------------------
+  # sort the emissions matrix in alphabetical order
+  emissions_mat <- emissions_mat[sort(rownames(emissions_mat)), sort(colnames(emissions_mat))]
+
+  # 1. filter the possible destinations & Filter rows of origins
+  emissions_mat_sub <- emissions_mat[df_origin$origin_id, destinations]
+
+  # 3. Multiply rows by value of input
+  emissions_mat_sub <- sweep(emissions_mat_sub, 1, df_origin$n_participant, FUN = "*")
+
+  # 4. Sum all rows together and sort
+  emissions_mat_sum <- sort(colSums(emissions_mat_sub))
 
   # 5. create dataframe and calculate emissions
   df <- data.frame(
-    name_dest = names(mat_sum),
-    grand_tot_km = unname(mat_sum)
-  ) |>
-    mutate(
-      distance_cat = case_when(
-        grand_tot_km <= 999 ~ "short",
-        grand_tot_km >= 3500 ~ "long",
-        .default = "medium"
-      )
-    ) |>
-    left_join(
-      df_conversion |>
-        select(distance_cat, emissions_factor = co2e),
-      by = "distance_cat"
-    ) |>
-    mutate(
-      grand_tot_emission = round(digits = 3, grand_tot_km * emissions_factor),
-    ) |>
-    select(name_dest, grand_tot_km, grand_tot_emission)
+    name_dest = names(distance_mat_sum),
+    grand_tot_km = unname(distance_mat_sum),
+    grand_tot_emission = unname(emissions_mat_sum)
+  )
 
   return(df)
 }
