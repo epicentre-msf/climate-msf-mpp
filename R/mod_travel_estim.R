@@ -48,10 +48,10 @@ mod_travel_estim_ui <- function(id) {
 }
 
 mod_travel_estim_server <- function(id,
-                                    mat,
+                                    distance_mat,
+                                    emissions_mat,
+                                    cities_network,
                                     air_msf,
-                                    df_conversion,
-                                    network,
                                     is_mobile) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
@@ -59,8 +59,8 @@ mod_travel_estim_server <- function(id,
     df_stop <- mod_stopover_input_server("travel_estim", orig_cities)
 
     df <- reactive({
-      if (length(setdiff(c(df_stop()$start_var, df_stop()$end_var), colnames(mat))) > 0) {
-        stop(paste0("Cities: ", paste(setdiff(c(df_stop()$start_var, df_stop()$end_var), colnames(mat)), collapse = ", "), " are not in the matrix"))
+      if (length(setdiff(c(df_stop()$start_var, df_stop()$end_var), colnames(distance_mat))) > 0) {
+        stop(paste0("Cities: ", paste(setdiff(c(df_stop()$start_var, df_stop()$end_var), colnames(distance_mat)), collapse = ", "), " are not in the matrix"))
       }
 
       on.exit({
@@ -73,27 +73,13 @@ mod_travel_estim_server <- function(id,
       df_stop() |>
         mutate(
           # index the matrix
-          distance_km = mat[cbind(start_var, end_var)],
-          distance_cat = case_when(
-            distance_km <= 999 ~ "short",
-            distance_km >= 3500 ~ "long",
-            .default = "medium"
-          )
-        ) |>
-        left_join(
-          df_conversion |> select(distance_cat, emissions_factor = co2e),
-          by = "distance_cat"
-        ) |>
-        mutate(
-          trip_emissions = round(digits = 3, distance_km * emissions_factor)
-        ) |>
+          distance_km = distance_mat[cbind(start_var, end_var)],
+          trip_emissions = emissions_mat[cbind(start_var, end_var)]) |>
         left_join(select(dest, city_code, start_city = city_name, start_country = country_name), by = join_by(start_var == city_code)) |>
         left_join(select(dest, city_code, end_city = city_name, end_country = country_name), by = join_by(end_var == city_code)) |>
         select(start_var, start_city, start_country, end_var, end_city, end_country, distance_km, trip_emissions)
-    }) %>%
+    })  |>
       bindEvent(input$go_estim)
-
-
 
     output$tbl <- renderReactable({
       validate(
@@ -159,7 +145,7 @@ mod_travel_estim_server <- function(id,
         filter(city_code %in% city_order) |>
         mutate(city_code = factor(city_code, levels = city_order)) |>
         arrange(city_code)
-      
+
       leaflet::leaflet() |>
         leaflet::addProviderTiles("CartoDB.Positron", group = "Light") |>
         leaflet::addScaleBar(position = "bottomright", options = leaflet::scaleBarOptions(imperial = FALSE)) |>
@@ -167,8 +153,8 @@ mod_travel_estim_server <- function(id,
         leaflet.extras::addResetMapButton() |>
         leaflet::addCircleMarkers(
           data = leaf_dat,
-          lng = ~lon,
-          lat = ~lat,
+          lng = ~city_lon,
+          lat = ~city_lat,
           radius = 10,
           fillColor = ~"darkred",
           color = ~"white",
@@ -178,8 +164,8 @@ mod_travel_estim_server <- function(id,
         ) |>
         leaflet::addPolylines(
           data = leaf_dat,
-          lng = ~lon,
-          lat = ~lat
+          lng = ~city_lon,
+          lat = ~city_lat
         )
     })
   })

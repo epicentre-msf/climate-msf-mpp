@@ -18,9 +18,9 @@ server <- function(input, output, session) {
   mod_travel_estim_server(
     id = "travel_estim",
     d_mat_cities,
-    air_msf,
-    df_conversion,
+    e_mat_cities,
     c_net,
+    air_msf,
     is_mobile = reactive(input$is_mobile)
   )
 
@@ -28,8 +28,8 @@ server <- function(input, output, session) {
     id = "mp",
     d_mat_flights,
     e_mat_flights,
-    air_msf,
     f_network = f_net,
+    air_msf,
     is_mobile = reactive(input$is_mobile)
   )
 
