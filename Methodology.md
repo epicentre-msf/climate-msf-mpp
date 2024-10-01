@@ -20,13 +20,13 @@ For any general enquiries regarding the project or **Climate Smart MSF** please 
 
 ## Data source 
 
-The travel data are gathered from different sources depending on the travel agencies used by MSF entities. These data are cleaned and compiled before visualisations. These data can be exported from the App using the *download data* button.
+The travel data are gathered from different sources depending on the travel agencies used by MSF entities. These data are cleaned and compiled before visualisations. 
 
 1. AMEX data are provided from 2019 to 2024 for OCG, OCA, OCB and other partner sections. 
 2. WAGRAM data are provided from 2019 to 2023 for Epicentre and OCP.
 3. CWT data are provided for 2021 and 2022 for OCBA. 
 
-Please be aware that these data are not exhaustive and so **do not represent** the entire scope of MSF travels emissions. Also some information (reason for travel, project code, missions, etc...) are not available for all entities and dates. 
+We use these data to find the flights paths between two cities. Because these data are not exhaustive, they **do not represent** all flights possibilities between two cities. When direct flights are not available in the data, we use the shortest combinations of flights - this is a limitations as it does not represent the true stop-overs for some travels. 
 
 ### Meeting place planner methodology
 
