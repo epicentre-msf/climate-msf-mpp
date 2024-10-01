@@ -98,7 +98,7 @@ mod_meeting_place_server <- function(id,
                                      emissions_mat,
                                      air_msf,
                                      df_conversion,
-                                     network,
+                                     f_network,
                                      is_mobile) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
@@ -292,7 +292,7 @@ mod_meeting_place_server <- function(id,
       # get the shortest path in network for all origin and this destination
       short_paths <- purrr::map(
         map_ori$origin_id,
-        ~ sfnetworks::st_network_paths(net, from = .x, to = map_dest)
+        ~ sfnetworks::st_network_paths(f_network, from = .x, to = map_dest)
       )
 
       short_nodes <- unique(unname(unlist(purrr::map(short_paths, ~ .x |>
@@ -305,7 +305,7 @@ mod_meeting_place_server <- function(id,
                                                 pull(edge_paths) |>
                                                 unlist())))
 
-      nodes <- net |>
+      nodes <- f_network |>
         activate("nodes") |>
         filter(name %in% short_nodes) |>
         st_as_sf() |>
@@ -315,7 +315,7 @@ mod_meeting_place_server <- function(id,
           name %in% stop_nodes ~ "shortest stop-over"
         ))
 
-      edges <- net |>
+      edges <- f_network |>
         activate("edges") |>
         slice(short_edges) |>
         st_as_sf()
@@ -380,6 +380,9 @@ best_locations <- function(
   # 4. Sum all rows together and sort
   distance_mat_sum <- sort(colSums(distance_mat_sub))
 
+  #if only one value, the vector is named otherwise can't build df
+  if(length(distance_mat_sum) == 1) { names(distance_mat_sum) <- destinations}
+
   # Emissions -----------------------------------------------
   # sort the emissions matrix in alphabetical order
   emissions_mat <- emissions_mat[sort(rownames(emissions_mat)), sort(colnames(emissions_mat))]
@@ -395,7 +398,7 @@ best_locations <- function(
 
   # 5. create dataframe and calculate emissions
   df <- data.frame(
-    name_dest = destinations,
+    name_dest = names(distance_mat_sum),
     grand_tot_km = unname(distance_mat_sum),
     grand_tot_emission = unname(emissions_mat_sum)
   )

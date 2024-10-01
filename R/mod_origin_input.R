@@ -128,8 +128,3 @@ city_input <- function(ns,
     )
   )
 }
-
-
-
-
-

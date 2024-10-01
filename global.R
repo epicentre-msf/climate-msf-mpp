@@ -16,19 +16,28 @@ source(here::here("R", "utils.R"))
 clean_path <- here::here("data", "clean")
 
 # Setup -------------------------------------------------------------------
-app_name <- "msf-carbon-app"
+app_name <- "climate-msf-mpp"
 app_title <- "MSF Carbon Travel App"
 sp_path <- Sys.getenv("SHINYPROXY_PUBLIC_PATH")
 is_sp_env <- sp_path != ""
 
 # Import data -------------------------------------------------------------
 
-# Get the distance matrix
-distance_mat <- read_rds(here::here(clean_path, "distance_matrix.rds"))
-emissions_mat <- read_rds(here::here(clean_path, "emissions_matrix.rds"))
+# Get the distance matrices
+d_mat_flights <- read_rds(here::here(clean_path, "matrix", "distance_matrix_fligths.rds"))
+d_mat_cities <- read_rds(here::here(clean_path, "matrix", "distance_matrix_cities.rds"))
+e_mat_flights <- read_rds(here::here(clean_path, "matrix", "emissions_matrix_flights.rds"))
+e_mat_cities <- read_rds(here::here(clean_path, "matrix", "emissions_matrix_cities.rds"))
+
+#load the network 
+f_net <- read_rds(here::here(clean_path, "network", "flights_network.rds"))
+c_net <- read_rds(here::here(clean_path, "network", "cities_network.rds"))
 
 #all possible destinations
-dest <- read_rds(here::here(clean_path, "dest_cities.rds"))
+dest <- read_rds(here::here(clean_path, "network", "dest_cities.rds"))
+
+# get the conversion df - given by Maelle
+df_conversion <- read_rds(here::here(clean_path, "cities", "conversion_df.rds"))
 
 orig_cities <- dest |>
   shinyWidgets::prepare_choices(
@@ -38,11 +47,7 @@ orig_cities <- dest |>
   )
 
 # get the air_msf data
-msf <- read_rds(here::here(clean_path, "unique_msf_clean.rds"))
-
-# msf_type_vec <- read_rds(here::here(clean_path, "full_msf_clean.rds")) |>
-#   distinct(msf_type) |>
-#   pull(msf_type)
+msf <- read_rds(here::here(clean_path, "cities", "unique_msf_clean.rds"))
 
 msf_type_vec <- c(
   "MSF HQ OC",
@@ -52,28 +57,6 @@ msf_type_vec <- c(
   "MSF Supply Center",
   "Research center"
 )
-
-# get the conversion df - given by Maelle
-df_conversion <- read_rds(here::here(clean_path, "conversion_df.rds"))
-
-# Get AMEX data
-# df_amex <- read_rds(here::here(clean_path, "amex_clean_lon_lat.rds"))
-# df_travels <- read_rds(here::here(clean_path, "full_amex_wagram_cwt.rds"))
-
-#load the network 
-net <- read_rds(here::here(clean_path, "flights_network.rds"))
-
-#load the distance matrix for all cities
-# cities_network <- read_rds(here::here(clean_path, "cities_network.rds"))
-
-# date range
-# init_year <- sort(unique(df_travels$year))
-# init_date_range <- format(seq.Date(min(df_travels$invoice_date), max(df_travels$invoice_date), by = "month"), "%Y-%m")
-# min_date <- min(init_date_range)
-# max_date <- max(init_date_range)
-
-# local disk cache
-# shiny::shinyOptions(cache = cachem::cache_disk(here::here(".cache")))
 
 disconnected <- sever::sever_default(
   title = "Disconnected",
