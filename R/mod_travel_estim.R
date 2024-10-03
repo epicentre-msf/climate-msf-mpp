@@ -56,9 +56,14 @@ mod_travel_estim_server <- function(id,
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
-    df_stop <- mod_stopover_input_server("travel_estim", orig_cities)
+    out <- mod_stopover_input_server("travel_estim", orig_cities)
+
+    df_stop <- reactive( out()$data )
+
+    pass_frei <- reactive( out()$pass_frei )
 
     df <- reactive({
+
       if (length(setdiff(c(df_stop()$start_var, df_stop()$end_var), colnames(distance_mat))) > 0) {
         stop(paste0("Cities: ", paste(setdiff(c(df_stop()$start_var, df_stop()$end_var), colnames(distance_mat)), collapse = ", "), " are not in the matrix"))
       }
@@ -69,19 +74,41 @@ mod_travel_estim_server <- function(id,
         }
       })
 
-      # build the segments
-      df_stop() |>
-        mutate(
-          # index the matrix
-          distance_km = distance_mat[cbind(start_var, end_var)],
-          trip_emissions = emissions_mat[cbind(start_var, end_var)]) |>
+      #browser()
+      if(pass_frei() == "freight"){
+
+        df <- df_stop() |>
+          mutate(
+            # index the matrices
+            distance_km = distance_mat[cbind(start_var, end_var)],
+            weight = out()$weight,
+            fct = case_when(link == "plane" ~ 1250,
+                            link == "truck" ~ 136),
+            #trip_emissions = emissions_mat[cbind(start_var, end_var)]
+            trip_emissions = round(digits = 1, distance_km * weight * fct / 1000 )
+          )
+      } else {
+
+        df <- df_stop() |>
+          mutate(
+            # index the matrices
+            distance_km = distance_mat[cbind(start_var, end_var)],
+            trip_emissions = case_when(link == "plane" ~ emissions_mat[cbind(start_var, end_var)],
+                                       link == "train" ~ round(digits = 1, distance_km * 1.2 * 0.005 )
+            )
+          )
+      }
+
+      # add the cities and countries
+      df |>
         left_join(select(dest, city_code, start_city = city_name, start_country = country_name), by = join_by(start_var == city_code)) |>
         left_join(select(dest, city_code, end_city = city_name, end_country = country_name), by = join_by(end_var == city_code)) |>
-        select(start_var, start_city, start_country, end_var, end_city, end_country, distance_km, trip_emissions)
+        select(start_var, start_city, start_country, end_var, end_city, end_country, link, distance_km, trip_emissions)
     })  |>
       bindEvent(input$go_estim)
 
     output$tbl <- renderReactable({
+
       validate(
         need(input$go_estim > 0, "Select your origin, any stop-overs and destination then click 'Get travel emissions' to see results.")
       )
@@ -99,6 +126,7 @@ mod_travel_estim_server <- function(id,
         select(-c(start_var, start_country, end_var, end_country))
 
       # get a table
+      #browser()
       react_tbl <- reactable(
         df_tbl,
         highlight = TRUE,
@@ -108,12 +136,18 @@ mod_travel_estim_server <- function(id,
         columns = list(
           start_city = colDef("Start city", align = "left", footer = htmltools::tags$b("Total")),
           end_city = colDef("End city", align = "left"),
+          link = colDef("Transport mode",
+                        align = "center",
+                        cell =  function(value){
+                          shiny::icon(value)
+                        }
+          ),
           distance_km = colDef("Segment distance (Km)",
-            align = "left",
-            format = colFormat(separators = TRUE, locales = "fr-Fr", digits = 0),
-            footer = function(values) {
-              htmltools::tags$b(sprintf("%.0f km", sum(values)))
-            }
+                               align = "left",
+                               format = colFormat(separators = TRUE, locales = "fr-Fr", digits = 0),
+                               footer = function(values) {
+                                 htmltools::tags$b(sprintf("%.0f km", sum(values)))
+                               }
           ),
           trip_emissions = colDef(
             "Segment Emissions (kg CO2e)",
@@ -124,7 +158,7 @@ mod_travel_estim_server <- function(id,
             },
             style = if (nrow(df_tbl > 1)) {
               function(value) {
-                normalized <- (value - min(df_tbl$trip_emission)) / (max(df_tbl$trip_emission) - min(df_tbl$trip_emission) + 1)
+                normalized <- (value - min(df_tbl$trip_emissions)) / (max(df_tbl$trip_emissions) - min(df_tbl$trip_emissions) + 1)
                 color <- orange_pal(normalized)
                 list(background = color)
               }
