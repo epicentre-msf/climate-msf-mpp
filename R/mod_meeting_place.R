@@ -533,29 +533,29 @@ best_locations <- function(
 }
 
 ############################################### TEST ZONE  #############################################################################
-
-library(dplyr)
-
-cities_df <- rio::import(here::here("data", "clean", "network", "dest_cities.rds")) |> as_tibble()
-distance_mat <- rio::import(here::here("data", "clean", "matrix", "distance_matrix_fligths.rds"))
-emissions_mat <- rio::import(here::here("data", "clean", "matrix", "emissions_matrix_flights.rds"))
-
-df_origin <- data.frame(
-  origin_id = c("PAR", "LON"),
-  n_participant = c(1, 1)
-)
-
-destinations <- c("LRT")
-
-best_locations(
-  distance_mat,
-  emissions_mat,
-  df_origin,
-  cities_df,
-  destinations = destinations
-)|>
-  arrange(grand_tot_emission_plane) |>
-  mutate(rank = row_number()) |>
-  relocate(rank, 1)
+#
+# library(dplyr)
+#
+# cities_df <- rio::import(here::here("data", "clean", "network", "dest_cities.rds")) |> as_tibble()
+# distance_mat <- rio::import(here::here("data", "clean", "matrix", "distance_matrix_fligths.rds"))
+# emissions_mat <- rio::import(here::here("data", "clean", "matrix", "emissions_matrix_flights.rds"))
+#
+# df_origin <- data.frame(
+#   origin_id = c("PAR", "LON"),
+#   n_participant = c(1, 1)
+# )
+#
+# destinations <- c("LRT")
+#
+# best_locations(
+#   distance_mat,
+#   emissions_mat,
+#   df_origin,
+#   cities_df,
+#   destinations = destinations
+# )|>
+#   arrange(grand_tot_emission_plane) |>
+#   mutate(rank = row_number()) |>
+#   relocate(rank, 1)
 
 ##############################################################################################################

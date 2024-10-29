@@ -34,7 +34,7 @@ f_net <- read_rds(here::here(clean_path, "network", "flights_network.rds"))
 c_net <- read_rds(here::here(clean_path, "network", "cities_network.rds"))
 
 #all possible destinations
-dest <- read_rds(here::here(clean_path, "network", "dest_cities.rds"))
+cities_df <- read_rds(here::here(clean_path, "network", "dest_cities.rds"))
 
 # get the conversion df - given by Maelle
 df_conversion <- read_rds(here::here(clean_path, "cities", "conversion_df.rds"))
