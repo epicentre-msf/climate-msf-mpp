@@ -93,13 +93,15 @@ mod_meeting_place_ui <- function(id) {
   )
 }
 
-mod_meeting_place_server <- function(id,
-                                     distance_mat,
-                                     emissions_mat,
-                                     air_msf,
-                                     df_conversion,
-                                     f_network,
-                                     is_mobile) {
+mod_meeting_place_server <- function(
+    id,
+    distance_mat,
+    emissions_mat,
+    air_msf,
+    df_conversion,
+    f_network,
+    is_mobile
+) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
@@ -112,7 +114,7 @@ mod_meeting_place_server <- function(id,
 
     # Filter the destinations to map on, this will also update choices for destination selector
     dest_fil <- reactive({
-      df_out <- dest
+      df_out <- cities_df
       if (input$msf_all == "msf") {
         df_out <- df_out |> filter(msf)
       }
@@ -132,7 +134,6 @@ mod_meeting_place_server <- function(id,
         )
       shinyWidgets::updateVirtualSelect("select_dest", choices = choices)
     })
-
     df_dists <- reactive({
       req(df_origin())
       on.exit({
@@ -141,23 +142,23 @@ mod_meeting_place_server <- function(id,
         }
       })
 
-      # final selection of destinations using the picker inputs
-      dest_cities <- dest_fil()
-
       # filter to selected cities if not empty
       if (length(input$select_dest)) {
-        dest_cities <- dest_cities |> filter(city_code %in% input$select_dest)
-      }
+        dest_cities <- dest_fil() |> filter(city_code %in% input$select_dest) |> pull(city_code)
+      } else {
+        dest_cities <- dest_fil()$city_code
 
-      dest_cities <- dest_cities |> pull(city_code)
+      }
 
       # Get best locations from the matrix
       all_dest <- best_locations(
         distance_mat,
         emissions_mat,
         df_origin(),
+        cities_df,
         destinations = dest_cities
       ) |>
+        arrange(coalesce(grand_tot_emission_train, grand_tot_emission_plane)) |>
         mutate(rank = row_number()) |>
         relocate(rank, 1) |>
         left_join(
@@ -180,25 +181,40 @@ mod_meeting_place_server <- function(id,
           city_lat,
           city_name,
           country_name,
-          grand_tot_km,
-          grand_tot_emission,
+          grand_tot_km_plane,
+          grand_tot_emission_plane,
+          grand_tot_km_train,
+          grand_tot_emission_train,
           oc,
           msf_type
         )
     }) |> bindEvent(input$go)
 
     # Make a reactable
-    orange_pal <- function(x) rgb(colorRamp(c("#B8CCAD", "#BF6C67"))(x), maxColorValue = 255)
-
     output$tbl <- reactable::renderReactable({
       validate(
         need(input$go > 0, "Select origins and destinations (optional) then click 'Get meeting places' to see results.")
       )
+
       req(df_dists())
 
       df <- df_dists() |>
         select(-c(city_lon, city_lat)) |>
         head(50)
+
+      # Define color scale function
+      color_scale <- function(value) {
+
+        min_val <- min(df$grand_tot_emission_train, na.rm = TRUE)
+        max_val <- max(df$grand_tot_emission_plane, na.rm = TRUE)
+
+        # Normalize the value to a 0-1 scale for color scaling
+        normalized <- (value - min_val) / (max_val - min_val)
+
+        # Interpolate color between light green and light red
+        palette <- colorRampPalette(c("#B8CCAD", "#eecb84", "#BF6C67"))(100)
+        palette[round(normalized * 99) + 1]  # Scale to palette index
+      }
 
       reactable(
         df,
@@ -208,41 +224,84 @@ mod_meeting_place_server <- function(id,
         pagination = FALSE,
         rowStyle = list(cursor = "pointer"),
         onClick = rt_get_city_code(id = ns("rt_city_code")),
-        defaultColDef = colDef(align = "center", format = colFormat(separators = TRUE, locales = "fr-Fr")),
+        defaultColDef = colDef(align = "center",
+                               format = colFormat(separators = TRUE,
+                                                  locales = "fr-Fr")),
         columns = list(
-          rank = colDef("Rank", align = "left", maxWidth = 50),
+          rank = colDef("Rank",
+                        align = "left",
+                        maxWidth = 50),
           city_code = colDef(show = FALSE),
-          city_name = colDef("City", align = "left", maxWidth = 150),
-          country_name = colDef("Country", align = "left", maxWidth = 150),
-          grand_tot_km = colDef(
-            "Total Km",
-            align = "left",
-            format = colFormat(separators = TRUE, locales = "fr-Fr", digits = 0),
+          city_name = colDef("City",
+                             align = "left",
+                             maxWidth = 150),
+          country_name = colDef("Country",
+                                align = "left",
+                                maxWidth = 150),
+          grand_tot_km_plane = colDef(
+            "Total Km (plane only)",
+            align = "center",
+            format = colFormat(separators = TRUE,
+                               locales = "fr-Fr",
+                               digits = 0),
             maxWidth = 150
           ),
-          grand_tot_emission = colDef(
-            "Total Emissions (kg CO2e)",
-            align = "left",
-            format = colFormat(separators = TRUE, locales = "fr-Fr", digits = 0),
+          grand_tot_emission_plane = colDef(
+            "Total Emissions (kg CO2e) (plane only)",
+            align = "center",
+            format = colFormat(separators = TRUE,
+                               locales = "fr-Fr",
+                               digits = 0),
             maxWidth = 150,
-            style = if (nrow(df) > 1) {
-              function(value) {
-                normalized <- (value - min(df$grand_tot_emission)) / (max(df$grand_tot_emission) - min(df$grand_tot_emission) + 1)
-                color <- orange_pal(normalized)
-                list(background = color)
+            style = if(nrow(df) > 1) {
+
+              function(value){
+
+                list(background  = color_scale(value))
               }
             } else {
-              background <- "white"
+              (list(background = "white"))
             }
           ),
-          oc = colDef("Operational Center", align = "left", maxWidth = 200),
-          msf_type = colDef("MSF type", align = "left")
+          grand_tot_km_train = colDef(
+            "Total Km (train alternatives)",
+            na = "-",
+            align = "center",
+            format = colFormat(separators = TRUE,
+                               locales = "fr-Fr",
+                               digits = 0),
+            maxWidth = 150
+          ),
+          grand_tot_emission_train = colDef(
+            na = "-",
+            "Total Emissions (kg CO2e) (train alternatives)",
+            align = "center",
+            format = colFormat(
+              separators = TRUE,
+              #locales = "fr-Fr",
+              digits = 0
+            ),
+            maxWidth = 150,
+            style = if (nrow(df) > 1) {
+
+              function(value){
+
+                list(background  = color_scale(value))
+              }
+            } else {
+              (list(background = "white"))
+            }
+          ),
+          oc = colDef("Operational Center",
+                      align = "left",
+                      maxWidth = 200),
+          msf_type = colDef("MSF type",
+                            align = "left")
         )
       )
     })
 
     #* Map  =========================================================================
-
     map_dest <- reactiveVal()
     # when new locations are calculated update map dest to rank 1 city
     observe({
@@ -257,18 +316,6 @@ mod_meeting_place_server <- function(id,
       req(input$rt_city_code)
       map_dest(input$rt_city_code)
     })
-
-    # update choices of input
-
-    # observeEvent(df_dists(), {
-    #   choices <- df_dists() |>
-    #     shinyWidgets::prepare_choices(
-    #       label = city_name,
-    #       value = city_code,
-    #       group_by = country_name
-    #     )
-    #   shinyWidgets::updateVirtualSelect("map_dest", choices = choices)
-    # })
 
     output$dest_text <- renderUI({
       req(map_dest())
@@ -332,9 +379,10 @@ mod_meeting_place_server <- function(id,
           values = unique(nodes$type)
         ) |>
         leaflet::addCircleMarkers(
-          data = mutate(nodes,
-                        city_lon = unlist(map(nodes$geometry,1)),
-                        city_lat = unlist(map(nodes$geometry,2))
+          data = mutate(
+            nodes,
+            city_lon = unlist(map(nodes$geometry, 1)),
+            city_lat = unlist(map(nodes$geometry, 2))
           ),
           lng = ~city_lon,
           lat = ~city_lat,
@@ -345,63 +393,169 @@ mod_meeting_place_server <- function(id,
           fillColor = ~ pal(type),
           label = ~city_name
         )
-    }) |> bindEvent(map_dest(), df_dists())
+    }) |>
+      bindEvent(map_dest(), df_dists())
   })
 }
 
+# Function to retrieve the best locations based on origins input, also retrieve the distance and emissions if trips under 550km are travelled by train
 best_locations <- function(
     distance_mat,
     emissions_mat,
     df_origin,
-    destinations) {
+    cities_df,
+    destinations
+) {
+
   if (length(setdiff(df_origin$origin_id, colnames(distance_mat))) > 0) {
     stop(paste0("Origins: ", paste(setdiff(df_origin$origin_id, colnames(distance_mat)), collapse = ", "), " are not in the matrix"))
   }
   if (length(setdiff(destinations, colnames(distance_mat))) > 0) {
     stop(paste0("Destinations: ", paste(setdiff(destinations, colnames(distance_mat)), collapse = ", "), " are not in the matrix"))
   }
+  # Plane distance and emissions matrix -----------------------------------------------
+  # Distances
+  # 1. filter the possible destinations & filter rows of origins
+  distance_mat_plane <- distance_mat[df_origin$origin_id, destinations, drop = FALSE]
 
-  # sort the df_origins by alphabetical order
-  df_origin <- arrange(df_origin, origin_id)
+  # Emissions
+  # 1. filter the possible dest_select & filter rows of origins
+  emissions_mat_plane <- emissions_mat[df_origin$origin_id, destinations, drop = FALSE]
 
-  # sort the destination by alphabetical order
-  destinations <- sort(destinations)
+  # Trains distance and Emissions matrix -----------------------------------------------
 
-  # Distances -----------------------------------------------
-  # sort the distance matrix in alphabetical order
-  distance_mat <- distance_mat[sort(rownames(distance_mat)), sort(colnames(distance_mat))]
+  # European matrix and train distances and emissions
+  dest_europe <- filter(cities_df, city_code %in% destinations, continent == "Europe") |> pull(city_code)
+  ori_europe <- filter(cities_df, city_code %in% df_origin$origin_id, continent == "Europe") |> pull(city_code)
 
-  # 1. filter the possible destinations & Filter rows of origins
-  distance_mat_sub <- distance_mat[df_origin$origin_id, destinations]
+  if (length(dest_europe) != 0 & length(ori_europe) != 0) {
+    # filter matrix to keep only European cities
+    europe_mat <- distance_mat_plane[ori_europe, dest_europe, drop = FALSE]
 
-  # 3. Multiply rows by value of input
-  distance_mat_sub <- sweep(as.matrix(distance_mat_sub), 1, df_origin$n_participant, FUN = "*")
+    # removes the values where distance is more than 550 (not travelled by train)
+    distance_mat_train <- ifelse(europe_mat < 550, europe_mat * 1.2, NA)
 
-  # 4. Sum all rows together and sort
-  distance_mat_sum <- sort(colSums(distance_mat_sub))
+  } else {
+    distance_mat_train <- NULL
+  }
 
-  #if only one value, the vector is named otherwise can't build df
-  if(length(distance_mat_sum) == 1) { names(distance_mat_sum) <- destinations}
+  # Trains emission matrix
+  emissions_mat_train <- if (is.null(distance_mat_train)) {
+    NULL
+  } else {
+    distance_mat_train * 0.005
+  }
+  # Need to complete the train matrices with plane data for all segments without a train
+  complete_train_mat <- function(train_mat, plane_mat) {
+    if (is.null(train_mat)) {
+      train_mat <- NULL
+    } else {
+      row_diff <- setdiff(rownames(plane_mat), rownames(train_mat))
+      col_diff <- setdiff(colnames(plane_mat), colnames(train_mat))
 
-  # Emissions -----------------------------------------------
-  # sort the emissions matrix in alphabetical order
-  emissions_mat <- emissions_mat[sort(rownames(emissions_mat)), sort(colnames(emissions_mat))]
+      # fill the missing rows/cols in train matrix
+      col <- matrix(nrow = nrow(train_mat), ncol = length(col_diff))
+      colnames(col) <- col_diff
 
-  # 1. filter the possible destinations & Filter rows of origins
-  emissions_mat_sub <- emissions_mat[df_origin$origin_id, destinations]
+      train_mat <- cbind(train_mat, col)
 
-  # 3. Multiply rows by value of input
-  emissions_mat_sub <- sweep(as.matrix(emissions_mat_sub), 1, df_origin$n_participant, FUN = "*")
+      row <- matrix(nrow = length(row_diff), ncol = ncol(train_mat))
+      rownames(row) <- row_diff
 
-  # 4. Sum all rows together and sort
-  emissions_mat_sum <- sort(colSums(emissions_mat_sub))
+      train_mat <- rbind(train_mat, row)
 
-  # 5. create dataframe and calculate emissions
+      #order matrix in same order
+      train_mat <- train_mat[rownames(plane_mat), , drop = FALSE]
+      train_mat <- train_mat[,colnames(plane_mat),  drop = FALSE]
+
+      # replace NA values in trains by the corresponding values in plane matrix
+      train_mat[is.na(train_mat)] <- plane_mat[is.na(train_mat)]
+    }
+
+    return(train_mat)
+  }
+
+  distance_mat_train <- complete_train_mat(distance_mat_train, distance_mat_plane)
+  emissions_mat_train <- complete_train_mat(emissions_mat_train, emissions_mat_plane)
+
+  # 3. Multiply matrices rows by value of input
+  distance_mat_plane_pp <- sweep(as.matrix(distance_mat_plane), 1, df_origin$n_participant, FUN = "*")
+  emissions_mat_plane_pp <- sweep(as.matrix(emissions_mat_plane), 1, df_origin$n_participant, FUN = "*")
+
+  if (is.null(distance_mat_train)) {
+    distance_mat_train_pp <- NULL
+    emissions_mat_train_pp <- NULL
+  } else {
+    distance_mat_train_pp <- sweep(as.matrix(distance_mat_train), 1, df_origin$n_participant, FUN = "*")
+    emissions_mat_train_pp <- sweep(as.matrix(emissions_mat_train), 1, df_origin$n_participant, FUN = "*")
+  }
+
+  # 4. Sum and sort all rows together
+  distance_sum_plane <- colSums(distance_mat_plane_pp)
+  emissions_sum_plane <- colSums(emissions_mat_plane_pp)
+  distance_sum_plane <- distance_sum_plane[order(names(distance_sum_plane))]
+  emissions_sum_plane <- emissions_sum_plane[order(names(emissions_sum_plane))]
+
+  if (is.null(emissions_mat_train_pp)) {
+    distance_sum_train <- NULL
+    emissions_sum_train <- NULL
+  } else {
+    distance_sum_train <- colSums(distance_mat_train_pp)
+    emissions_sum_train <- colSums(emissions_mat_train_pp)
+
+    # sort vectors
+    distance_sum_train <- distance_sum_train[order(names(distance_sum_train))]
+    emissions_sum_train <- emissions_sum_train[order(names(emissions_sum_train))]
+  }
+
+  # 5. create data.frame
   df <- data.frame(
-    name_dest = names(distance_mat_sum),
-    grand_tot_km = unname(distance_mat_sum),
-    grand_tot_emission = unname(emissions_mat_sum)
-  )
+    name_dest = sort(destinations),
+    grand_tot_km_plane = unname(distance_sum_plane),
+    grand_tot_emission_plane = unname(emissions_sum_plane),
+    grand_tot_km_train = if (is.null(distance_sum_train)) {
+      NA
+    } else {
+      unname(distance_sum_train)
+    },
+    grand_tot_emission_train = if (is.null(emissions_sum_train)) {
+      NA
+    } else {
+      unname(emissions_sum_train)
+    }
+  ) |>
+    mutate(
+      grand_tot_km_train = ifelse(grand_tot_km_train == grand_tot_km_plane, NA, grand_tot_km_train),
+      grand_tot_emission_train = ifelse(grand_tot_emission_train == grand_tot_emission_plane, NA, grand_tot_emission_train)
+    )
 
   return(df)
 }
+
+############################################### TEST ZONE  #############################################################################
+
+library(dplyr)
+
+cities_df <- rio::import(here::here("data", "clean", "network", "dest_cities.rds")) |> as_tibble()
+distance_mat <- rio::import(here::here("data", "clean", "matrix", "distance_matrix_fligths.rds"))
+emissions_mat <- rio::import(here::here("data", "clean", "matrix", "emissions_matrix_flights.rds"))
+
+df_origin <- data.frame(
+  origin_id = c("PAR", "LON"),
+  n_participant = c(1, 1)
+)
+
+destinations <- c("LRT")
+
+best_locations(
+  distance_mat,
+  emissions_mat,
+  df_origin,
+  cities_df,
+  destinations = destinations
+)|>
+  arrange(grand_tot_emission_plane) |>
+  mutate(rank = row_number()) |>
+  relocate(rank, 1)
+
+##############################################################################################################

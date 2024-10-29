@@ -24,7 +24,7 @@ mod_stopover_input_ui <- function(id) {
           "Input freight weight in tons"
         ),
         value = 1,
-        min = 1,
+        min = .1,
         max = 1000,
         step = .1,
         width = "80px"
