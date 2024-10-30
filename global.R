@@ -24,7 +24,7 @@ is_sp_env <- sp_path != ""
 # Import data -------------------------------------------------------------
 
 # Get the distance matrices
-d_mat_flights <- rio::import(here::here(clean_path, "matrix", "distance_matrix_fligths.rds"))
+d_mat_flights <- rio::import(here::here(clean_path, "matrix", "distance_matrix_flights.rds"))
 d_mat_cities <- read_rds(here::here(clean_path, "matrix", "distance_matrix_cities.rds"))
 e_mat_flights <- rio::import(here::here(clean_path, "matrix", "emissions_matrix_flights.rds"))
 e_mat_cities <- read_rds(here::here(clean_path, "matrix", "emissions_matrix_cities.rds"))
@@ -39,7 +39,7 @@ cities_df <- read_rds(here::here(clean_path, "network", "dest_cities.rds"))
 # get the conversion df - given by Maelle
 df_conversion <- read_rds(here::here(clean_path, "cities", "conversion_df.rds"))
 
-orig_cities <- dest |>
+orig_cities <- cities_df |>
   shinyWidgets::prepare_choices(
     label = city_name,
     value = city_code,

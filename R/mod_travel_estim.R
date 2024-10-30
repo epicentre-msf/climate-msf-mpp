@@ -101,8 +101,8 @@ mod_travel_estim_server <- function(id,
 
       # add the cities and countries
       df |>
-        left_join(select(dest, city_code, start_city = city_name, start_country = country_name), by = join_by(start_var == city_code)) |>
-        left_join(select(dest, city_code, end_city = city_name, end_country = country_name), by = join_by(end_var == city_code)) |>
+        left_join(select(cities_df, city_code, start_city = city_name, start_country = country_name), by = join_by(start_var == city_code)) |>
+        left_join(select(cities_df, city_code, end_city = city_name, end_country = country_name), by = join_by(end_var == city_code)) |>
         select(start_var, start_city, start_country, end_var, end_city, end_country, link, distance_km, trip_emissions)
     })  |>
       bindEvent(input$go_estim)
@@ -175,7 +175,7 @@ mod_travel_estim_server <- function(id,
 
     output$map <- renderLeaflet({
       city_order <- unique(c(df()$start_var, df()$end_var))
-      leaf_dat <- dest |>
+      leaf_dat <- cities_df |>
         filter(city_code %in% city_order) |>
         mutate(city_code = factor(city_code, levels = city_order)) |>
         arrange(city_code)

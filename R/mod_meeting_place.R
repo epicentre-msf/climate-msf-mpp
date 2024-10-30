@@ -319,7 +319,7 @@ mod_meeting_place_server <- function(
 
     output$dest_text <- renderUI({
       req(map_dest())
-      city_name <- dest[dest$city_code == map_dest(), "city_name", drop = TRUE]
+      city_name <- cities_df[cities_df$city_code == map_dest(), "city_name", drop = TRUE]
       tags$p("Destination: ", tags$b(city_name), tags$small("  (click a row in the table above to change the destination)"))
     })
 
@@ -331,7 +331,7 @@ mod_meeting_place_server <- function(
         domain = c("destination", "origin", "shortest stop-over")
       )
       # origins
-      map_ori <- df_origin() |> left_join(dest, by = join_by(origin_id == city_code))
+      map_ori <- df_origin() |> left_join(cities_df, by = join_by(origin_id == city_code))
 
       # destination selected
       map_dest <- map_dest()
