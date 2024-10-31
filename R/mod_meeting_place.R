@@ -216,6 +216,44 @@ mod_meeting_place_server <- function(
         palette[round(normalized * 99) + 1]  # Scale to palette index
       }
 
+      render_reactable_header <- function(name,
+                                          tooltip,
+                                          icon) {
+
+        if(icon == "plane") {
+
+          tippy::tippy(
+            div(
+              name,
+              div(
+                icon("plane", class = "fa-lg"),  # First icon
+                style = "margin-top: auto;"  # Forces the icon to the bottom
+              ),
+              style = "display: flex; flex-direction: column; align-items: center; height: 50px;"  # Adjust height as needed
+            ),
+            paste0('<span style="font-size:16px;">', tooltip, '</span>'),
+            allowHTML = TRUE
+          )
+
+        } else if(icon == "plane_train"){
+
+          tippy::tippy(
+            div(
+              name,
+              div(
+                icon("plane", class = "fa-lg"),  # First icon
+                span("+", style = "margin: 0 5px; font-weight: bold;"),  # "+" sign with spacing
+                icon("train", class = "fa-lg"),  # Second icon
+                style = "margin-top: auto;"  # Forces the icon to the bottom
+              ),
+              style = "display: flex; flex-direction: column; align-items: center; height: 50px;"  # Adjust height as needed
+            ),
+            paste0('<span style="font-size:16px;">', tooltip, '</span>'),
+            allowHTML = TRUE
+          )
+        }
+      }
+
       reactable(
         df,
         highlight = TRUE,
@@ -228,7 +266,7 @@ mod_meeting_place_server <- function(
                                format = colFormat(separators = TRUE,
                                                   locales = "fr-Fr")),
         columns = list(
-          rank = colDef("Rank",
+          rank = colDef(header = "Rank",
                         align = "left",
                         maxWidth = 50),
           city_code = colDef(show = FALSE),
@@ -239,7 +277,10 @@ mod_meeting_place_server <- function(
                                 align = "left",
                                 maxWidth = 150),
           grand_tot_km_plane = colDef(
-            "Total Km (plane only)",
+
+            header = render_reactable_header(name = "Total Km",
+                                             tooltip = "If all trips are travelled using the plane",
+                                             icon = "plane"),
             align = "center",
             format = colFormat(separators = TRUE,
                                locales = "fr-Fr",
@@ -247,7 +288,9 @@ mod_meeting_place_server <- function(
             maxWidth = 150
           ),
           grand_tot_emission_plane = colDef(
-            "Total Emissions (kg CO2e) (plane only)",
+            header = render_reactable_header(name = "Total Emissions (kg CO2e)",
+                                             tooltip = "If all trips are travelled using the plane",
+                                             icon = "plane"),
             align = "center",
             format = colFormat(separators = TRUE,
                                locales = "fr-Fr",
@@ -264,7 +307,9 @@ mod_meeting_place_server <- function(
             }
           ),
           grand_tot_km_train = colDef(
-            "Total Km (train alternatives)",
+            header = render_reactable_header(name = "Total Km",
+                                             tooltip = "If trips between european cities less than 500km appart are done on trains and all other trips using the plane",
+                                             icon = "plane_train"),
             na = "-",
             align = "center",
             format = colFormat(separators = TRUE,
@@ -274,7 +319,9 @@ mod_meeting_place_server <- function(
           ),
           grand_tot_emission_train = colDef(
             na = "-",
-            "Total Emissions (kg CO2e) (train alternatives)",
+            header = render_reactable_header(name = "Total Emissions (kg CO2e)",
+                                             tooltip = "If trips between european cities less than 500km appart are done on trains and all other trips using the plane",
+                                             icon = "plane_train"),
             align = "center",
             format = colFormat(
               separators = TRUE,

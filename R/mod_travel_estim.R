@@ -80,11 +80,12 @@ mod_travel_estim_server <- function(id,
         df <- df_stop() |>
           mutate(
             # index the matrices
-            distance_km = distance_mat[cbind(start_var, end_var)],
+            distance_km = case_when( link == "plane" ~ distance_mat[cbind(start_var, end_var)],
+                                     link == "truck" ~ distance_mat[cbind(start_var, end_var)] * 1.5
+                                       ),
             weight = out()$weight,
             fct = case_when(link == "plane" ~ 1250,
                             link == "truck" ~ 136),
-            #trip_emissions = emissions_mat[cbind(start_var, end_var)]
             trip_emissions = round(digits = 1, distance_km * weight * fct / 1000 )
           )
       } else {
@@ -92,9 +93,11 @@ mod_travel_estim_server <- function(id,
         df <- df_stop() |>
           mutate(
             # index the matrices
-            distance_km = distance_mat[cbind(start_var, end_var)],
+            distance_km = case_when(link == "plane" ~  distance_mat[cbind(start_var, end_var)],
+                                    link == "train" ~ distance_mat[cbind(start_var, end_var)] * 1.1
+                                    ),
             trip_emissions = case_when(link == "plane" ~ emissions_mat[cbind(start_var, end_var)],
-                                       link == "train" ~ round(digits = 1, distance_km * 1.2 * 0.005 )
+                                       link == "train" ~ round(digits = 1, distance_km * 0.005 )
             )
           )
       }
@@ -115,8 +118,20 @@ mod_travel_estim_server <- function(id,
 
       req(df())
 
-      # Make a reactable
-      orange_pal <- function(x) rgb(colorRamp(c("#B8CCAD", "#BF6C67"))(x), maxColorValue = 255)
+      # Define color scale function
+      color_scale <- function(value) {
+
+        min_val <- min(df_tbl$trip_emissions, na.rm = TRUE)
+        max_val <- max(df_tbl$trip_emissions, na.rm = TRUE)
+
+        # Normalize the value to a 0-1 scale for color scaling
+        normalized <- (value - min_val) / (max_val - min_val)
+
+        # Interpolate color between light green and light red
+        palette <- colorRampPalette(c("#B8CCAD", "#eecb84", "#BF6C67"))(100)
+        palette[round(normalized * 99) + 1]  # Scale to palette index
+      }
+
 
       df_tbl <- df() |>
         mutate(
@@ -157,11 +172,12 @@ mod_travel_estim_server <- function(id,
               htmltools::tags$b(sprintf("%.0f kgCO2e", sum(values)))
             },
             style = if (nrow(df_tbl > 1)) {
-              function(value) {
-                normalized <- (value - min(df_tbl$trip_emissions)) / (max(df_tbl$trip_emissions) - min(df_tbl$trip_emissions) + 1)
-                color <- orange_pal(normalized)
-                list(background = color)
+
+              function(value){
+
+                list(background = color_scale(value))
               }
+
             } else {
               background <- "white"
             }

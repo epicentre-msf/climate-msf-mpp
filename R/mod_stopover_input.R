@@ -7,20 +7,19 @@ mod_stopover_input_ui <- function(id) {
     shinyWidgets::radioGroupButtons(
       inputId = ns("pass_frei"),
       label = "Passenger or Freight ?",
-      #choices = c("Passenger" = "passenger", "Freight" = "freight"),
-      choiceNames = list(shiny::icon("person"), shiny::icon("box") ),
-      choiceValues = list("passenger", "freight" ),
+      choiceNames = list(shiny::icon("person"), shiny::icon("box")),
+      choiceValues = list("passenger", "freight"),
       size = "sm",
       selected = "passenger",
       justified = TRUE
     ),
-
     div(
       class = "p-0",
       numericInput(
         inputId = ns("f_weight"),
-        label =  tooltip(
-          span("Weight", bsicons::bs_icon("info-circle")),
+        label = tooltip(
+          span("Weight",
+               bsicons::bs_icon("info-circle")),
           "Input freight weight in tons"
         ),
         value = 1,
@@ -37,16 +36,21 @@ mod_stopover_input_ui <- function(id) {
       id = ns("inputs"),
       stopover_input(
         ns,
+        pass_freight = "passenger",
         index = 1,
         city_lab = tooltip(
-          span("Steps of the itinary",
-               bsicons::bs_icon("info-circle")),
+          span(
+            "Steps of the itinary",
+            bsicons::bs_icon("info-circle")
+          ),
           "Input cities travelled to"
         )
       ),
-      stopover_input(ns,
-                     index = 2,
-                     link_input = TRUE
+      stopover_input(
+        ns,
+        pass_freight = "passenger",
+        index = 2,
+        link_input = TRUE
       ),
     ),
     div(
@@ -74,7 +78,11 @@ mod_stopover_input_server <- function(id, cities) {
 
     observe({
       cond <- input$pass_frei == "freight"
-      shinyjs::toggle("f_weight", condition = cond, anim = TRUE)
+      shinyjs::toggle(
+        "f_weight",
+        condition = cond,
+        anim = TRUE
+      )
     })
 
     # set this to number of inputs you starts with
@@ -99,6 +107,7 @@ mod_stopover_input_server <- function(id, cities) {
         ui = stopover_input(
           ns,
           index,
+          pass_freight = input$pass_frei,
           choices = cities,
           link_input = TRUE
         )
@@ -112,28 +121,37 @@ mod_stopover_input_server <- function(id, cities) {
       n_inputs(index - 1)
     })
 
-    #observe change in
+    # observe change in
     observeEvent(
       input$pass_frei,
-
       {
-        if(input$pass_frei == "freight") {
-
-          purrr::walk( 2:n_inputs(), ~ shinyWidgets::updateRadioGroupButtons(
-            inputId = paste0("link_", .x),
-            choiceValues = list("plane", "truck"),
-            choiceNames = list(shiny::icon("plane"), shiny::icon("truck")),
-            selected = "plane"
+        if (input$pass_frei == "freight") {
+          purrr::walk(
+            2:n_inputs(),
+            ~ shinyWidgets::updateRadioGroupButtons(
+              inputId = paste0("link_", .x),
+              choiceValues = list(
+                "plane",
+                "truck"
+              ),
+              choiceNames = list(shiny::icon("plane"),
+                                 shiny::icon("truck")),
+              selected = "plane"
+            )
           )
-          )
-        } else {
-
-          purrr::walk( 2:n_inputs(), ~ shinyWidgets::updateRadioGroupButtons(
-            inputId = paste0("link_", .x),
-            choiceValues = list("plane", "train"),
-            choiceNames = list(shiny::icon("plane"), shiny::icon("train")),
-            selected = "plane"
-          )
+        } else if (input$pass_frei == "passenger") {
+          purrr::walk(
+            2:n_inputs(),
+            ~ shinyWidgets::updateRadioGroupButtons(
+              inputId = paste0("link_", .x),
+              choiceValues = list(
+                "plane",
+                "train"
+              ),
+              choiceNames = list(shiny::icon("plane"),
+                                 shiny::icon("train")),
+              selected = "plane"
+            )
           )
         }
       }
@@ -146,21 +164,24 @@ mod_stopover_input_server <- function(id, cities) {
 
       data.frame(
         start_var = head(selected_cities, -1),
-        end_var = tail(selected_cities, - 1),
+        end_var = tail(selected_cities, -1),
         link = selected_link
       )
     })
 
     # return stop overs df
-    reactive(list(data = df(),
-                  weight = input$f_weight,
-                  pass_frei = input$pass_frei))
+    reactive(list(
+      data = df(),
+      weight = input$f_weight,
+      pass_frei = input$pass_frei
+    ))
   })
 }
 
 stopover_input <- function(
     ns,
     index,
+    pass_freight,
     choices = NULL,
     selected = NULL,
     city_lab = NULL,
@@ -168,26 +189,29 @@ stopover_input <- function(
 ) {
   div(
     id = paste0("origin", index),
-    #class = "d-flex p-0 justify-content-center",
-
-    if(link_input){
-
+    if (link_input) {
       div(
         class = "d-flex justify-content-center",
         shinyWidgets::radioGroupButtons(
           inputId = ns(paste0("link_", index)),
           label = tooltip(
-            span("Travel mode",
-                 bsicons::bs_icon("info-circle")),
+            span(
+              "Travel mode",
+              bsicons::bs_icon("info-circle")
+            ),
             "Travel mode between two cities"
           ),
           justified = TRUE,
-          choiceValues = list("plane", "train"),
-          choiceNames = list(shiny::icon("plane"), shiny::icon("train")),
-
-          #= c(`<i class="fa-solid fa-plane"></i>` = "air", `<i class="fa-solid fa-train"></i>` = "rail"),
-          #choices = c(`<i class="fa-solid fa-plane"></i>` = "air", `<i class="fa-solid fa-train"></i>` = "rail"),
-
+          choiceValues = if(pass_freight == "passenger"){
+            list("plane","train")
+          } else {
+            list("plane","truck")
+          },
+          choiceNames = if(pass_freight == "passenger"){
+            list(shiny::icon("plane"), shiny::icon("train"))
+          } else {
+            list(shiny::icon("plane"), shiny::icon("truck"))
+          },
           width = "50%"
         )
       )
@@ -203,7 +227,6 @@ stopover_input <- function(
         autoSelectFirstOption = TRUE,
         placeholder = "Select city...",
         position = "bottom",
-        # dropboxWrapper = "body",
         showDropboxAsPopup = FALSE,
         showOptionsOnlyOnSearch = FALSE,
         optionsCount = 5
