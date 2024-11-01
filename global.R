@@ -16,7 +16,7 @@ source(here::here("R", "utils.R"))
 clean_path <- here::here("data", "clean")
 
 # Setup -------------------------------------------------------------------
-app_name <- "climate-msf-mpp"
+app_name <- "msf-carbon-app"
 app_title <- "MSF Carbon Travel App"
 sp_path <- Sys.getenv("SHINYPROXY_PUBLIC_PATH")
 is_sp_env <- sp_path != ""
