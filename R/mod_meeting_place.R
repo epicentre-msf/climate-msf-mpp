@@ -205,8 +205,9 @@ mod_meeting_place_server <- function(
       # Define color scale function
       color_scale <- function(value) {
 
-        min_val <- min(df$grand_tot_emission_train, na.rm = TRUE)
-        max_val <- max(df$grand_tot_emission_plane, na.rm = TRUE)
+        all_e <- c(df$grand_tot_emission_train, df$grand_tot_emission_plane)
+        min_val <- min(all_e, na.rm = TRUE)
+        max_val <- max(all_e, na.rm = TRUE)
 
         # Normalize the value to a 0-1 scale for color scaling
         normalized <- (value - min_val) / (max_val - min_val)
@@ -295,7 +296,7 @@ mod_meeting_place_server <- function(
             align = "center",
             format = colFormat(
               separators = TRUE,
-              #locales = "fr-Fr",
+              locales = "fr-Fr",
               digits = 0
             ),
             maxWidth = 150,
@@ -310,7 +311,7 @@ mod_meeting_place_server <- function(
             }
           ),
           grand_tot_km_plane = colDef(
-
+            na = "-",
             header = render_reactable_header(name = "Total Km",
                                              tooltip = "If all trips are travelled using the plane",
                                              icon = "plane"),
@@ -321,6 +322,7 @@ mod_meeting_place_server <- function(
             maxWidth = 150
           ),
           grand_tot_emission_plane = colDef(
+            na = "-",
             header = render_reactable_header(name = "Total Emissions (kg CO2e)",
                                              tooltip = "If all trips are travelled using the plane",
                                              icon = "plane"),
