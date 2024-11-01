@@ -193,7 +193,7 @@ mod_meeting_place_server <- function(
     # Make a reactable
     output$tbl <- reactable::renderReactable({
       validate(
-        need(input$go > 0, "Select origins and destinations (optional) then click 'Get meeting places' to see results.")
+        need(map_dest(), "Select origins and destinations (optional) then click 'Get meeting places' to see results.")
       )
 
       req(df_dists())
@@ -215,44 +215,6 @@ mod_meeting_place_server <- function(
         # Interpolate color between light green and light red
         palette <- colorRampPalette(c("#B8CCAD", "#eecb84", "#BF6C67"))(100)
         palette[round(normalized * 99) + 1]  # Scale to palette index
-      }
-
-      render_reactable_header <- function(name,
-                                          tooltip,
-                                          icon) {
-
-        if(icon == "plane") {
-
-          tippy::tippy(
-            div(
-              name,
-              div(
-                icon("plane", class = "fa-lg"),  # First icon
-                style = "margin-top: auto;"  # Forces the icon to the bottom
-              ),
-              style = "display: flex; flex-direction: column; align-items: center; height: 50px;"  # Adjust height as needed
-            ),
-            paste0('<span style="font-size:16px;">', tooltip, '</span>'),
-            allowHTML = TRUE
-          )
-
-        } else if(icon == "plane_train"){
-
-          tippy::tippy(
-            div(
-              name,
-              div(
-                icon("plane", class = "fa-lg"),  # First icon
-                span("+", style = "margin: 0 5px; font-weight: bold;"),  # "+" sign with spacing
-                icon("train", class = "fa-lg"),  # Second icon
-                style = "margin-top: auto;"  # Forces the icon to the bottom
-              ),
-              style = "display: flex; flex-direction: column; align-items: center; height: 50px;"  # Adjust height as needed
-            ),
-            paste0('<span style="font-size:16px;">', tooltip, '</span>'),
-            allowHTML = TRUE
-          )
-        }
       }
 
       reactable(
@@ -351,6 +313,47 @@ mod_meeting_place_server <- function(
     })
 
     #* Map  =========================================================================
+    output$map <- leaflet::renderLeaflet({
+      leaflet::leaflet() |>
+        leaflet::addProviderTiles("CartoDB.Positron", group = "Light") |>
+        leaflet::setView(lng = 0, lat = 0, zoom = 3) %>% 
+        leaflet::addScaleBar(position = "bottomright", options = leaflet::scaleBarOptions(imperial = FALSE)) |>
+        leaflet.extras::addFullscreenControl(position = "topleft") |>
+        leaflet.extras::addResetMapButton()
+    })
+
+    observe({
+      # origins
+      req(nrow(df_origin()) > 0)
+      map_dest(NULL)
+      map_ori <- df_origin() |>
+        left_join(cities_df, by = join_by(origin_id == city_code)) %>%
+        sf::st_as_sf(coords = c("city_lon", "city_lat"), crs = 4326)
+      bbox <- sf::st_bbox(map_ori)
+      leaflet::leafletProxy("map") %>%
+        leaflet::clearMarkers() %>%
+        leaflet::clearShapes() %>%
+        leaflet::removeControl("mapleg") %>% 
+        leaflet::addCircleMarkers(
+          data = map_ori,
+          # lng = ~city_lon,
+          # lat = ~city_lat,
+          radius = 10,
+          color = ~"white",
+          fillOpacity = 1,
+          weight = 1,
+          fillColor = "steelblue",
+          label = ~city_name
+        ) %>%
+        addLegend(
+          position = "topright",
+          colors = "steelblue",
+          labels = "origin",
+          layerId = "mapleg"
+        ) |>
+        flyToBounds(bbox[["xmin"]], bbox[["ymin"]], bbox[["xmax"]], bbox[["ymax"]])
+    }) |> bindEvent(df_origin())
+
     map_dest <- reactiveVal()
     # when new locations are calculated update map dest to rank 1 city
     observe({
@@ -372,7 +375,7 @@ mod_meeting_place_server <- function(
       tags$p("Destination: ", tags$b(city_name), tags$small("  (click a row in the table above to change the destination)"))
     })
 
-    output$map <- leaflet::renderLeaflet({
+    observe({
       req(map_dest())
 
       pal <- colorFactor(
@@ -416,16 +419,16 @@ mod_meeting_place_server <- function(
         slice(short_edges) |>
         st_as_sf()
 
-      leaflet::leaflet() |>
-        leaflet::addProviderTiles("CartoDB.Positron", group = "Light") |>
-        leaflet::addScaleBar(position = "bottomright", options = leaflet::scaleBarOptions(imperial = FALSE)) |>
-        leaflet.extras::addFullscreenControl(position = "topleft") |>
-        leaflet.extras::addResetMapButton() |>
+      leafletProxy("map") %>%
+        clearMarkers() %>%
+        clearShapes() %>%
+        leaflet::removeControl("mapleg") %>% 
         leaflet::addPolylines(data = edges) |>
         addLegend(
           position = "topright",
           pal = pal,
-          values = unique(nodes$type)
+          values = unique(nodes$type),
+          layerId = "mapleg"
         ) |>
         leaflet::addCircleMarkers(
           data = mutate(

@@ -59,3 +59,44 @@ rt_get_city_code <- function(id) {
   }
 ", id))
 }
+
+render_reactable_header <- function(
+    name,
+    tooltip,
+    icon) {
+  if (icon == "plane") {
+    htmltools::div(
+      style = paste("text-decoration: underline;", "text-decoration-style: dotted;", "cursor: help"),
+      tippy::tippy(
+        div(
+          name,
+          div(
+            icon("plane", class = "fa-lg"), # First icon
+            style = "margin-top: auto;" # Forces the icon to the bottom
+          ),
+          style = "display: flex; flex-direction: column; align-items: center; height: 50px;" # Adjust height as needed
+        ),
+        paste0('<span style="font-size:16px;">', tooltip, "</span>"),
+        allowHTML = TRUE
+      )
+    )
+  } else if (icon == "plane_train") {
+    htmltools::div(
+      style = paste("text-decoration: underline;", "text-decoration-style: dotted;", "cursor: help"),
+      tippy::tippy(
+        div(
+          name,
+          div(
+            icon("plane", class = "fa-lg"), # First icon
+            span("+", style = "margin: 0 5px; font-weight: bold;"), # "+" sign with spacing
+            icon("train", class = "fa-lg"), # Second icon
+            style = "margin-top: auto;" # Forces the icon to the bottom
+          ),
+          style = "display: flex; flex-direction: column; align-items: center; height: 50px;" # Adjust height as needed
+        ),
+        paste0('<span style="font-size:16px;">', tooltip, "</span>"),
+        allowHTML = TRUE
+      )
+    )
+  }
+}
