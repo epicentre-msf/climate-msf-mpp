@@ -181,10 +181,10 @@ mod_meeting_place_server <- function(
           city_lat,
           city_name,
           country_name,
-          grand_tot_km_plane,
-          grand_tot_emission_plane,
           grand_tot_km_train,
           grand_tot_emission_train,
+          grand_tot_km_plane,
+          grand_tot_emission_plane,
           oc,
           msf_type
         )
@@ -276,36 +276,6 @@ mod_meeting_place_server <- function(
           country_name = colDef("Country",
                                 align = "left",
                                 maxWidth = 150),
-          grand_tot_km_plane = colDef(
-
-            header = render_reactable_header(name = "Total Km",
-                                             tooltip = "If all trips are travelled using the plane",
-                                             icon = "plane"),
-            align = "center",
-            format = colFormat(separators = TRUE,
-                               locales = "fr-Fr",
-                               digits = 0),
-            maxWidth = 150
-          ),
-          grand_tot_emission_plane = colDef(
-            header = render_reactable_header(name = "Total Emissions (kg CO2e)",
-                                             tooltip = "If all trips are travelled using the plane",
-                                             icon = "plane"),
-            align = "center",
-            format = colFormat(separators = TRUE,
-                               locales = "fr-Fr",
-                               digits = 0),
-            maxWidth = 150,
-            style = if(nrow(df) > 1) {
-
-              function(value){
-
-                list(background  = color_scale(value))
-              }
-            } else {
-              (list(background = "white"))
-            }
-          ),
           grand_tot_km_train = colDef(
             header = render_reactable_header(name = "Total Km",
                                              tooltip = "If trips between european cities less than 500km appart are done on trains and all other trips using the plane",
@@ -330,6 +300,36 @@ mod_meeting_place_server <- function(
             ),
             maxWidth = 150,
             style = if (nrow(df) > 1) {
+
+              function(value){
+
+                list(background  = color_scale(value))
+              }
+            } else {
+              (list(background = "white"))
+            }
+          ),
+          grand_tot_km_plane = colDef(
+
+            header = render_reactable_header(name = "Total Km",
+                                             tooltip = "If all trips are travelled using the plane",
+                                             icon = "plane"),
+            align = "center",
+            format = colFormat(separators = TRUE,
+                               locales = "fr-Fr",
+                               digits = 0),
+            maxWidth = 150
+          ),
+          grand_tot_emission_plane = colDef(
+            header = render_reactable_header(name = "Total Emissions (kg CO2e)",
+                                             tooltip = "If all trips are travelled using the plane",
+                                             icon = "plane"),
+            align = "center",
+            format = colFormat(separators = TRUE,
+                               locales = "fr-Fr",
+                               digits = 0),
+            maxWidth = 150,
+            style = if(nrow(df) > 1) {
 
               function(value){
 
@@ -558,8 +558,6 @@ best_locations <- function(
   # 5. create data.frame
   df <- data.frame(
     name_dest = sort(destinations),
-    grand_tot_km_plane = unname(distance_sum_plane),
-    grand_tot_emission_plane = unname(emissions_sum_plane),
     grand_tot_km_train = if (is.null(distance_sum_train)) {
       NA
     } else {
@@ -569,7 +567,9 @@ best_locations <- function(
       NA
     } else {
       unname(emissions_sum_train)
-    }
+    },
+    grand_tot_km_plane = unname(distance_sum_plane),
+    grand_tot_emission_plane = unname(emissions_sum_plane)
   ) |>
     mutate(
       grand_tot_km_train = ifelse(grand_tot_km_train == grand_tot_km_plane, NA, grand_tot_km_train),
