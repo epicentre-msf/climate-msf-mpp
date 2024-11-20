@@ -110,11 +110,11 @@ mod_meeting_place_server <- function(
       shinyjs::toggle("msf_type_select", condition = cond, anim = TRUE)
     })
 
-    df_origin <- mod_origin_input_server("origin", orig_cities)
+    df_origin <- mod_origin_input_server("origin", mpp_orig_cities)
 
     # Filter the destinations to map on, this will also update choices for destination selector
     dest_fil <- reactive({
-      df_out <- cities_df
+      df_out <- mpp_cities_df
       if (input$msf_all == "msf") {
         df_out <- df_out |> filter(msf)
       }
@@ -134,7 +134,9 @@ mod_meeting_place_server <- function(
         )
       shinyWidgets::updateVirtualSelect("select_dest", choices = choices)
     })
+
     df_dists <- reactive({
+
       req(df_origin())
       on.exit({
         if (is_mobile()) {
@@ -155,10 +157,11 @@ mod_meeting_place_server <- function(
         distance_mat,
         emissions_mat,
         df_origin(),
-        cities_df,
+        mpp_cities_df,
         destinations = dest_cities
       ) |>
-        arrange(coalesce(grand_tot_emission_train, grand_tot_emission_plane)) |>
+        arrange(coalesce(grand_tot_emission_train,
+                         grand_tot_emission_plane)) |>
         mutate(rank = row_number()) |>
         relocate(rank, 1) |>
         left_join(
@@ -457,17 +460,23 @@ best_locations <- function(
 ) {
 
   if (length(setdiff(df_origin$origin_id, colnames(distance_mat))) > 0) {
-    stop(paste0("Origins: ", paste(setdiff(df_origin$origin_id, colnames(distance_mat)), collapse = ", "), " are not in the matrix"))
+    stop(paste0("Distance matrix Origins: ", paste(setdiff(df_origin$origin_id, colnames(distance_mat)), collapse = ", "), " are not in the matrix"))
   }
   if (length(setdiff(destinations, colnames(distance_mat))) > 0) {
-    stop(paste0("Destinations: ", paste(setdiff(destinations, colnames(distance_mat)), collapse = ", "), " are not in the matrix"))
+    stop(paste0("Distance matrix Destinations: ", paste(setdiff(destinations, colnames(distance_mat)), collapse = ", "), " are not in the matrix"))
+  }
+  if (length(setdiff(df_origin$origin_id, colnames(emissions_mat))) > 0) {
+    stop(paste0("Emissions matrix Origins: ", paste(setdiff(df_origin$origin_id, colnames(emissions_mat)), collapse = ", "), " are not in the matrix"))
+  }
+  if (length(setdiff(destinations, colnames(emissions_mat))) > 0) {
+    stop(paste0("Emissions matrix Destinations: ", paste(setdiff(destinations, colnames(emissions_mat)), collapse = ", "), " are not in the matrix"))
   }
   # Plane distance and emissions matrix -----------------------------------------------
   # Distances
   # 1. filter the possible destinations & filter rows of origins
   distance_mat_plane <- distance_mat[df_origin$origin_id, destinations, drop = FALSE]
 
-  # Emissions
+    # Emissions
   # 1. filter the possible dest_select & filter rows of origins
   emissions_mat_plane <- emissions_mat[df_origin$origin_id, destinations, drop = FALSE]
 
@@ -581,7 +590,7 @@ best_locations <- function(
   return(df)
 }
 
-############################################### TEST ZONE  #############################################################################
+# ############################################### TEST ZONE  #############################################################################
 #
 # library(dplyr)
 #
@@ -600,8 +609,8 @@ best_locations <- function(
 #   distance_mat,
 #   emissions_mat,
 #   df_origin,
-#   cities_df,
-#   destinations = destinations
+#   filter(cities_df, mpp_option),
+#   destinations = filter(cities_df, mpp_option)$city_code
 # )|>
 #   arrange(grand_tot_emission_plane) |>
 #   mutate(rank = row_number()) |>

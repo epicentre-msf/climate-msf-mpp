@@ -31,13 +31,13 @@ e_mat_cities <- read_rds(here::here(clean_path, "matrix", "emissions_matrix_citi
 
 #load the network
 f_net <- read_rds(here::here(clean_path, "network", "flights_network.rds"))
-c_net <- read_rds(here::here(clean_path, "network", "cities_network.rds"))
+
+#c_net <- read_rds(here::here(clean_path, "network", "cities_network.rds"))
 
 #all possible destinations
 cities_df <- read_rds(here::here(clean_path, "network", "dest_cities.rds"))
 
-# get the conversion df - given by Maelle
-df_conversion <- read_rds(here::here(clean_path, "cities", "conversion_df.rds"))
+mpp_cities_df <- filter(cities_df, mpp_option)
 
 orig_cities <- cities_df |>
   shinyWidgets::prepare_choices(
@@ -45,6 +45,17 @@ orig_cities <- cities_df |>
     value = city_code,
     group_by = country_name
   )
+
+#cities just for the mpp
+mpp_orig_cities <- mpp_cities_df |>
+  shinyWidgets::prepare_choices(
+    label = city_name,
+    value = city_code,
+    group_by = country_name
+  )
+
+# get the conversion df - given by Maelle
+df_conversion <- read_rds(here::here(clean_path, "cities", "conversion_df.rds"))
 
 # get the air_msf data
 msf <- read_rds(here::here(clean_path, "cities", "unique_msf_clean.rds"))
