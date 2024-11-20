@@ -16,7 +16,7 @@ source(here::here("R", "utils.R"))
 clean_path <- here::here("data", "clean")
 
 # Setup -------------------------------------------------------------------
-app_name <- "climate-msf-mpp"
+app_name <- "msf-carbon-app"
 app_title <- "MSF Carbon Travel App"
 sp_path <- Sys.getenv("SHINYPROXY_PUBLIC_PATH")
 is_sp_env <- sp_path != ""
@@ -24,9 +24,9 @@ is_sp_env <- sp_path != ""
 # Import data -------------------------------------------------------------
 
 # Get the distance matrices
-d_mat_flights <- rio::import(here::here(clean_path, "matrix", "distance_matrix_flights.rds"))
+d_mat_flights <- read_rds(here::here(clean_path, "matrix", "distance_matrix_flights.rds"))
 d_mat_cities <- read_rds(here::here(clean_path, "matrix", "distance_matrix_cities.rds"))
-e_mat_flights <- rio::import(here::here(clean_path, "matrix", "emissions_matrix_flights.rds"))
+e_mat_flights <- read_rds(here::here(clean_path, "matrix", "emissions_matrix_flights.rds"))
 e_mat_cities <- read_rds(here::here(clean_path, "matrix", "emissions_matrix_cities.rds"))
 
 #load the network

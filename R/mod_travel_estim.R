@@ -113,7 +113,7 @@ mod_travel_estim_server <- function(id,
     output$tbl <- renderReactable({
 
       validate(
-        need(input$go_estim > 0, "Select your origin, any stop-overs and destination then click 'Get travel emissions' to see results.")
+        need(input$go_estim > 0, "Select your itinerary origin, any stop-overs and destination then click 'Get travel emissions' to see results.")
       )
 
       req(df())

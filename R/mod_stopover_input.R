@@ -4,14 +4,17 @@ mod_stopover_input_ui <- function(id) {
     shinyjs::useShinyjs(),
     h5("Type of travel"),
     hr(),
-    shinyWidgets::radioGroupButtons(
-      inputId = ns("pass_frei"),
-      label = "Passenger or Freight ?",
-      choiceNames = list(shiny::icon("person"), shiny::icon("box")),
-      choiceValues = list("passenger", "freight"),
-      size = "sm",
-      selected = "passenger",
-      justified = TRUE
+    div(
+      class = "pb-1",
+      shinyWidgets::radioGroupButtons(
+        inputId = ns("pass_frei"),
+        label = "Passenger or Freight ?",
+        choiceNames = list(shiny::icon("person"), shiny::icon("box")),
+        choiceValues = list("passenger", "freight"),
+        size = "sm",
+        selected = "passenger",
+        justified = TRUE
+      )
     ),
     div(
       class = "p-0",
