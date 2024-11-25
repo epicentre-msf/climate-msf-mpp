@@ -17,6 +17,7 @@ ui <- tagList(
     collapsible = TRUE,
     fillable_mobile = FALSE,
     inverse = FALSE,
+    bg = "#ffffff",
     theme = bs_theme(
       font_scale = 0.8,
       bootswatch = "minty",
@@ -32,7 +33,11 @@ ui <- tagList(
       icon = bsicons::bs_icon("info-circle"),
       div(
         class = "container bigger-text",
-        includeMarkdown(here::here("Methodology.md"))
+        layout_columns(
+          card(
+            includeMarkdown(here::here("Methodology.md"))
+          )
+        )
       )
     ),
     

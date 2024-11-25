@@ -8,7 +8,7 @@ mod_travel_estim_ui <- function(id) {
       sidebar = sidebar(
         id = ns("sb"),
         gap = 0,
-        bg = "#eaeaea",
+        bg = "#ffffff",
         open = TRUE,
         mod_stopover_input_ui(ns("travel_estim")),
         bslib::input_task_button(
@@ -27,7 +27,6 @@ mod_travel_estim_ui <- function(id) {
           bslib::card_title("Travel Emissions")
         ),
         bslib::card_body(
-          padding = 0,
           reactableOutput(ns("tbl"))
         )
       ),

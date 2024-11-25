@@ -9,7 +9,7 @@ mod_meeting_place_ui <- function(id) {
         id = ns("sb"),
         width = 300,
         gap = 0,
-        bg = "#eaeaea",
+        bg = "#ffffff",
         open = TRUE,
         mod_origin_input_ui(ns("origin")),
         h5("Destinations"),
@@ -72,7 +72,6 @@ mod_meeting_place_ui <- function(id) {
           bslib::card_title("Optimal Meeting locations")
         ),
         bslib::card_body(
-          padding = 0,
           reactableOutput(ns("tbl"))
         )
       ),
