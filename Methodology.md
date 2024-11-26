@@ -85,3 +85,16 @@ When selecting a trip for freight, you need to indicate the weight (in tons) of 
 Emissions for plane travel are calculated as **distance (km) \* freight weight (tons) \* 1250**.
 
 For truck transport, we consider longer distances (flight distance \* 1.1) and emissions calculated as: **distance (km) \* freight weight (tons) \* 136** .
+
+<script>
+    // Select the specific div by its ID (or another selector)
+    let div = document.getElementById('about-card');
+
+    // Find all <a> elements inside that div
+    let links = div.querySelectorAll('a');
+
+    // Loop through each link and add the target="_blank" attribute
+    links.forEach(link => {
+        link.setAttribute('target', '_blank');
+    });
+</script>
