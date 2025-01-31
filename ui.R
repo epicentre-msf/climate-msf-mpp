@@ -1,5 +1,11 @@
 ui <- tagList(
   tags$head(
+    # google analytics tracking =====================================
+    shiny::tags$script(
+      src = "https://www.googletagmanager.com/gtag/js?id=G-5FHCG3F31W",
+      async = ""
+    ),
+    shiny::tags$script(src = "js/ga.js"),
     tags$script(src = "js/main.js"),
     tags$style("
     body {background-color: #f7f7f7;}
